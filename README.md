@@ -1,166 +1,178 @@
-# FastAPI Metrics Monitoring System - Project Statement
+# FastAPI Metrics Monitoring System
 
 ## Project Overview
 
-Build a comprehensive FastAPI application that implements both system-level and application-level metrics monitoring using Prometheus metrics format. The application will expose detailed performance metrics for monitoring infrastructure health and application behavior.
+The **FastAPI Metrics Monitoring System** is designed to provide real-time observability into both system and application-level performance metrics. Using **Prometheus metrics format**, it tracks CPU, memory, request rates, latency, and other vital metrics, making it suitable for production-grade monitoring.
 
----
+The system enables developers and operators to:
 
-## Objectives
-
-### Primary Goals
-
-- Develop a production-ready FastAPI application with built-in metrics collection
-- Implement system resource monitoring (CPU, memory usage)
-- Track HTTP request patterns and performance metrics
-- Provide real-time observability into application behavior
-- Enable scalable monitoring architecture for production deployment
-
-### Success Criteria
-
-- All default system metrics are accurately collected and exposed
-- HTTP request metrics provide comprehensive request lifecycle visibility
-- Metrics endpoint returns properly formatted Prometheus metrics
-- Application maintains performance under load while collecting metrics
-- Documentation covers deployment and monitoring setup
-
----
-
-## Technical Requirements
-
-### System Metrics Implementation
-
-- **CPU Metrics**
-  - `process_cpu_seconds_total`: Total CPU time consumed by the process
-  - CPU usage rate calculation: `rate(process_cpu_seconds_total[5m])`
-  - CPU utilization percentage tracking
-
-- **Memory Metrics**
-  - `process_resident_memory_bytes`: Physical memory currently used
-  - `process_virtual_memory_bytes`: Virtual memory allocated
-  - Memory usage trends and alerting thresholds
-
-- **Additional System Metrics**
-  - Process start time and uptime
-  - File descriptor usage
-  - Garbage collection statistics
-  - Thread count monitoring
-
-### HTTP Application Metrics
-
-- **Request Volume Metrics**
-  - `http_requests_total`: Counter for total HTTP requests with labels:
-    - `method`: HTTP method (GET, POST, PUT, DELETE)
-    - `endpoint`: Request path/route
-    - `status_code`: HTTP response status
-  - Global request rate: `rate(http_requests_total[5m])`
-  - Per-endpoint request rates
-
-- **Request Performance Metrics**
-  - `http_request_duration_seconds`: Histogram of request durations
-  - 95th percentile latency:
-    ```prometheus
-    histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{endpoint="/data",method="GET"}[5m])) by (le))
-    ```
-  - Request size and response size histograms
-
----
+* Track system resource utilization
+* Monitor HTTP request patterns
+* Identify bottlenecks and performance issues
+* Integrate seamlessly with Prometheus-based monitoring infrastructure
 
 ## Technical Stack
 
 ### Core Framework
 
-- FastAPI: Main web framework
-- Python 3.8+: Runtime environment
-- Uvicorn: ASGI server for production deployment
+* **FastAPI**: Main web framework
+* **Python 3.8+**: Runtime environment
+* **Uvicorn**: ASGI server for production deployment
 
 ### Monitoring Stack
 
-- Prometheus Client: Metrics collection and exposition
-- Prometheus: Metrics storage and querying (external)
+* **prometheus\_client**: Python library for metrics collection
+* **Prometheus**: Metrics storage and querying (external)
 
 ### Additional Libraries
 
-- `psutil`: System resource monitoring
-- `middleware`: Custom FastAPI middleware for HTTP metrics
-- `asyncio`: Asynchronous operations support
+* **psutil**: System resource monitoring
+* **asyncio**: Async operations support
+* **Middleware**: Custom FastAPI middleware for HTTP metrics
 
 ---
 
-## Architecture Design
+## Architecture
 
 ### Application Structure
 
-The following structure is provided as a demo example. Teams can design their own structure based on their preferences and requirements:
 ```
 fastapi-metrics-app/ 
 ├── app/ 
-│ ├── main.py # FastAPI application entry point 
-│ ├── metrics/ 
-│ │ ├── init.py 
-│ │ ├── system_metrics.py # CPU, memory metrics 
-│ │ └── http_metrics.py # HTTP request metrics 
-│ ├── middleware/ 
-│ │ └── metrics_middleware.py 
-│ ├── routers/ 
-│ │ ├── api.py # Business logic endpoints 
-│ │ └── health.py # Health check endpoints 
-│ └── config.py # Configuration management 
-├── requirements.txt 
+│   ├── main.py                  # FastAPI entry point
+│   ├── metrics/ 
+│   │   ├── __init__.py
+│   │   ├── system_metrics.py     # CPU, memory, threads, GC metrics
+│   │   └── http_metrics.py       # HTTP request counters and histograms
+│   ├── middleware/ 
+│   │   └── metrics_middleware.py # Tracks HTTP request lifecycle
+│   ├── routers/ 
+│   │   ├── api.py               # Sample data endpoints
+│   │   └── health.py            # Health check endpoint
+│   └── config.py                # Config management
+├── requirements.txt
 └── README.md
 ```
 
+#### Metrics Endpoint
 
-> Note: This is a suggested structure for demonstration purposes. Feel free to organize the codebase according to your team’s conventions and project requirements.
-
-### Key Components
-
-- **Metrics Middleware**
-  - Intercept all HTTP requests
-  - Record request start time, method, path
-  - Track response status and duration
-  - Update Prometheus counters and histograms
-
-- **System Metrics Collector**
-  - Background task collecting system resources
-  - Periodic updates of CPU and memory gauges
-  - Process-level statistics monitoring
-
-- **Metrics Endpoint**
-  - `/metrics` endpoint exposing Prometheus format
-  - Proper `Content-Type` headers
+* `/metrics` exposes all Prometheus metrics
+* Returns `Content-Type: text/plain; version=0.0.4`
 
 ---
 
-## Implementation Requirements
+## Implementation Details
 
-### Core Endpoints
+### System Metrics
 
-- `GET /`: Root endpoint with basic response
-- `GET /health`: Health check endpoint
-- `GET /metrics`: Prometheus metrics exposition
-- `POST /data`: Sample data processing endpoint
-- `GET /data`: Sample data retrieval endpoint
+| Metric                              | Description              | Prometheus Type |
+| ----------------------------------- | ------------------------ | --------------- |
+| `process_cpu_seconds_total`         | Total CPU time used      | Counter         |
+| `process_resident_memory_bytes`     | Physical memory used     | Gauge           |
+| `process_virtual_memory_bytes`      | Virtual memory allocated | Gauge           |
+| `process_start_time_seconds`        | Process start time       | Gauge           |
+| `process_open_fds`                  | File descriptor count    | Gauge           |
+| `python_gc_objects_collected_total` | Collected GC objects     | Counter         |
+| `python_threads`                    | Active threads count     | Gauge           |
 
-### Metrics Configuration
+### HTTP Metrics
 
-- Configurable metric collection intervals
-- Histogram bucket customization
-- Label standardization across metrics
-- Metric naming conventions following Prometheus best practices
+| Metric                          | Description               | Labels                         | Type      |
+| ------------------------------- | ------------------------- | ------------------------------ | --------- |
+| `http_requests_total`           | Total HTTP requests       | method, endpoint, status\_code | Counter   |
+| `http_request_duration_seconds` | Request latency histogram | method, endpoint               | Histogram |
+| `http_request_size_bytes`       | Request payload size      | method, endpoint               | Histogram |
+| `http_response_size_bytes`      | Response payload size     | method, endpoint               | Histogram |
+
+### Middleware
+
+* Tracks request lifecycle:
+
+  ```python
+  start = time.time()
+  response = await call_next(request)
+  duration = time.time() - start
+  ```
+* Updates Prometheus metrics after request completes
+* Supports **async/await** for non-blocking monitoring
+
+### Endpoints
+
+| Endpoint   | Method | Description                          |
+| ---------- | ------ | ------------------------------------ |
+| `/`        | GET    | Root endpoint with a welcome message |
+| `/health`  | GET    | Health check (returns status OK)     |
+| `/metrics` | GET    | Prometheus metrics exposition        |
+| `/data`    | POST   | Sample data processing               |
+| `/data`    | GET    | Sample data retrieval                |
 
 ---
 
-## Documentation Deliverables
+## Configuration
 
-### Technical Documentation
+* **Metric collection interval**: Adjustable via `config.py`
+* **Histogram buckets**: Customizable per endpoint
+* **Metric labels**: Standardized across all metrics
+* **Prometheus naming**: Follows best practices
 
-- Metrics reference guide
-- Deployment instructions using `docker-compose`
-- Configuration options (if any)
+Example in `config.py`:
 
-> This project will result in a FastAPI application with comprehensive metrics monitoring capabilities.
-Project Submission :
- Finish within timeframes
- Make proper project documentation
-Submit Link : https://forms.gle/TFs4ZJSQCw1T3FVo8
+```python
+SYSTEM_METRICS_INTERVAL = 10
+
+HTTP_DURATION_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, float("inf")]
+
+METRIC_PREFIX = ""
+```
+
+---
+
+## Deployment Guide
+
+### Using Docker & Docker Compose
+
+* Build and run:
+
+```bash
+docker-compose up --build
+```
+
+* Access endpoints:
+
+- FastAPI app: http://localhost:8000
+- Prometheus: http://localhost:9090
+- API Docs: http://localhost:8000/docs
+- Metrics: http://localhost:8000/metrics
+
+---
+
+## Prometheus Metrics Reference
+
+**Sample Metrics Output:**
+
+```
+# HELP process_cpu_seconds_total Total user and system CPU time
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 12.34
+
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",endpoint="/data",status_code="200"} 42
+```
+
+---
+
+## Monitoring & Alerts
+
+* Prometheus queries can be used for alerts:
+
+```prometheus
+# High CPU utilization alert
+rate(process_cpu_seconds_total[5m]) > 0.8
+```
+
+* Track 95th percentile latency per endpoint:
+
+```prometheus
+histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))
+```
